@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>New Open World Game (Web)</title>
+    <style>
+      html,body { margin:0; height:100%; background: #ffffff; overflow:hidden; }
+      #overlay { position: absolute; top:10px; left:10px; color:#111; background: rgba(255,255,255,0.9); padding:10px 12px; border-radius:8px; z-index:2; font-family: sans-serif; line-height:1.5; max-width:320px; }
+      #showShopButton { position: absolute; top:10px; right:10px; z-index:3; background: #66d2ff; color: #082a42; border:none; border-radius:12px; padding:10px 16px; font-weight:700; cursor:pointer; box-shadow: 0 10px 24px rgba(0,0,0,0.22); }
+      #shop { position: absolute; top:10px; right:10px; width:320px; padding:14px; background: rgba(20,20,28,0.95); color:#fff; border-radius:16px; z-index:2; font-family: sans-serif; font-size:14px; box-shadow: 0 14px 40px rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.12); display:none; }
+      #shop h2 { margin:0 0 10px; font-size:18px; letter-spacing:0.03em; }
+      #shop .shop-actions { display:flex; justify-content:space-between; gap:8px; margin-bottom:12px; }
+      #shop .shop-actions button { flex:1; background:#66d2ff; color:#082a42; border:none; border-radius:8px; padding:10px 12px; font-weight:700; cursor:pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.22); }
+      #shop .shop-actions button:hover { background:#8ee7ff; }
+      #shop .credits { margin-bottom:10px; color:#aaf; }
+      #shop .item { margin-bottom:10px; padding:10px; background: rgba(255,255,255,0.08); border-radius:10px; }
+      #shop .item button { margin-top:8px; width:100%; padding:10px; border:none; border-radius:8px; background:#4fb3ff; color:#082a42; font-weight:700; cursor:pointer; }
+      #shop .item button:hover { background:#6dc8ff; }
+      #shop .item button:disabled { background:#555; cursor:not-allowed; }
+      #shopModal { position: fixed; top:0; left:0; right:0; bottom:0; display:none; align-items:center; justify-content:center; background: rgba(10,12,25,0.86); z-index:10; pointer-events:none; }
+      #shopModal.active { display:flex; pointer-events:auto; }
+      #shopModalContent { width: min(860px, calc(100% - 40px)); max-height: calc(100% - 40px); overflow:auto; border-radius:24px; padding:24px; background: linear-gradient(180deg, #1a2034 0%, #11161f 100%); border:1px solid rgba(255,255,255,0.14); box-shadow: 0 30px 80px rgba(0,0,0,0.55); color:#f7f7ff; pointer-events:auto; }
+      #shopModal.active { display:flex; }
+      #shopModalContent { width: min(860px, calc(100% - 40px)); max-height: calc(100% - 40px); overflow:auto; border-radius:24px; padding:24px; background: linear-gradient(180deg, #1a2034 0%, #11161f 100%); border:1px solid rgba(255,255,255,0.14); box-shadow: 0 30px 80px rgba(0,0,0,0.55); color:#f7f7ff; }
+      #shopModalContent h2 { margin:0 0 16px; font-size:28px; }
+      #shopModalContent .hero { position:relative; min-height:200px; border-radius:18px; overflow:hidden; background: radial-gradient(circle at top left, rgba(102,210,255,0.35), transparent 35%), linear-gradient(135deg, #17223b 0%, #09111b 100%); margin-bottom:20px; }
+      #shopModalContent .hero::before { content:'Art + Upgrades'; position:absolute; top:20px; left:20px; font-size:38px; font-weight:800; letter-spacing:0.02em; color:#b9f3ff; }
+      #shopModalContent .hero::after { content:'Big shop display with premium items for your ride.'; position:absolute; bottom:20px; left:20px; font-size:14px; color:#cfe9ff; opacity:0.9; }
+      #shopModalContent .modal-items { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:18px; }
+      #shopModalContent .modal-items .modal-card { padding:18px; border-radius:18px; background: rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); }
+      #shopModalContent .modal-items .modal-card h3 { margin:0 0 8px; font-size:18px; }
+      #shopModalContent .modal-items .modal-card p { margin:0 0 12px; color:#d7e3ff; font-size:13px; line-height:1.5; }
+      #shopModalContent .modal-items .modal-card button { width:100%; padding:10px; border:none; border-radius:10px; background:#4fb3ff; color:#082a42; font-weight:700; cursor:pointer; }
+      #shopModalClose { position:absolute; top:18px; right:18px; background: rgba(255,255,255,0.12); border:none; color:#f7f7ff; padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:700; }
+      #minimap { position: absolute; bottom:10px; right:10px; width:220px; height:220px; background: rgba(20,20,20,0.8); border: 2px solid rgba(255,255,255,0.8); border-radius: 12px; z-index:2; }
+      #speedometer { position: absolute; bottom:10px; left:10px; width:190px; padding:14px 16px; background: rgba(10,12,25,0.92); color:#f7f7ff; border: 1px solid rgba(255,255,255,0.14); border-radius:14px; z-index:2; font-family: sans-serif; box-shadow: 0 15px 30px rgba(0,0,0,0.35); }
+      #speedometer .label { font-size:12px; color: #9ab8ff; letter-spacing:0.05em; margin-bottom:4px; }
+      #speedometer .value { font-size:28px; font-weight:800; line-height:1.1; }
+      #speedometer .gear { margin-top:10px; display:flex; justify-content:space-between; align-items:center; font-size:16px; }
+      #speedometer .gear span { font-weight:700; color:#ffd24d; }
+      #errors { position: absolute; bottom:10px; left:10px; right:10px; max-height:40%; overflow:auto; color:#900; background: rgba(255,240,240,0.95); padding:8px; border-radius:6px; display:none; z-index:2; font-family: monospace; font-size:13px; }
+      canvas { display:block; width:100%; height:100%; }
+    </style>
+  </head>
+  <body>
+    <div id="overlay">Controls: W = forward, S = back, A = left, D = right (arrow keys also supported). Drag mouse to rotate camera.</div>
+    <button id="showShopButton">Open Shop</button>
+    <div id="shop">
+      <div class="shop-actions">
+        <h2>Shop</h2>
+        <button id="shopClose">Close</button>
+      </div>
+      <div class="shop-actions">
+        <button id="openBigShop">Open Big Shop</button>
+      </div>
+      <div class="credits">Credits: <span id="shopCredits">0</span></div>
+      <div class="item" id="item-engine">
+        <div><strong>Engine Tune</strong></div>
+        <div>+12 top speed</div>
+        <button id="buy-engine">Buy 50</button>
+      </div>
+      <div class="item" id="item-tires">
+        <div><strong>Tire Grip</strong></div>
+        <div>+15% steering response</div>
+        <button id="buy-tires">Buy 40</button>
+      </div>
+      <div class="item" id="item-paint">
+        <div><strong>Summer Paint</strong></div>
+        <div>Change car color</div>
+        <button id="buy-paint">Buy 25</button>
+      </div>
+    </div>
+
+    <div id="shopModal" class="">
+      <div id="shopModalContent">
+        <button id="shopModalClose">Close</button>
+        <h2>Ultimate Summer Shop</h2>
+        <div class="hero"></div>
+        <div class="modal-items">
+          <div class="modal-card">
+            <h3>Golden Engine</h3>
+            <p>Boost your top speed and feel the rush of an upgraded summer supercar.</p>
+            <button onclick="document.getElementById('buy-engine').click()">Buy 50</button>
+          </div>
+          <div class="modal-card">
+            <h3>Grip Tires</h3>
+            <p>Steer tighter and drift through coastal turns with premium racing tires.</p>
+            <button onclick="document.getElementById('buy-tires').click()">Buy 40</button>
+          </div>
+          <div class="modal-card">
+            <h3>Sunshine Paint</h3>
+            <p>Make your ride pop with a bright paint job inspired by summer roads.</p>
+            <button onclick="document.getElementById('buy-paint').click()">Buy 25</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="speedometer">
+      <div class="label">Speed</div>
+      <div class="value" id="speedValue">0 km/h</div>
+      <div class="gear"><div class="label">Gear</div><span id="gearValue">N</span></div>
+    </div>
+    <canvas id="minimap" width="220" height="220"></canvas>
+    <script>
+      // show helpful note until the scene initializes
+      const info = document.getElementById('overlay');
+      // keep overlay as control instructions; append a short status
+      info.innerText += ' — starting...';
+
+      function showError(message) {
+        const e = document.getElementById('errors');
+        e.style.display = 'block';
+        e.textContent += message + '\n\n';
+      }
+
+      // If the module doesn't set a start flag within a few seconds, show guidance
+      setTimeout(() => {
+        if (!window.__appStarted) {
+          showError('Module failed to load or execute. Check DevTools Console and Network tab for missing modules or CORS/network errors.');
+        }
+      }, 3000);
+
+      window.addEventListener('error', (ev) => {
+        showError('Error: ' + (ev.message || ev.error));
+      });
+      window.addEventListener('unhandledrejection', (ev) => {
+        showError('Unhandled Rejection: ' + (ev.reason && ev.reason.message ? ev.reason.message : ev.reason));
+      });
+    </script>
+    <!-- Load Three.js and loaders via classic scripts to avoid ES module network issues -->
+    <script src="https://unpkg.com/three@0.154.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.154.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script type="module" src="src/main.js"></script>
+    <pre id="errors"></pre>
+  </body>
+</html>
